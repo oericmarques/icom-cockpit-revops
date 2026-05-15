@@ -45,7 +45,20 @@ const NAV: { id: View; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'perdas', label: 'Perdas', icon: XCircle },
 ]
 
-const CHART_COLORS = [C.navy500, C.gold, C.ok, C.warn, '#8b5cf6', '#ec4899', C.navy400, '#14b8a6', '#f97316', '#6366f1']
+function blueShade(i: number, total: number) {
+  const shades = ['#071a33', '#0d2744', '#133a5c', '#1a5bb5', '#2d7ff9', '#5a9dff', '#8fbfff', '#b3d4ff']
+  if (total <= shades.length) return shades[i] ?? shades[shades.length - 1]
+  const idx = Math.round((i / (total - 1)) * (shades.length - 1))
+  return shades[idx]
+}
+
+function BarLabel({ x, y, width, height, value }: { x: number; y: number; width: number; height: number; value: number }) {
+  return <text x={x + width + 6} y={y + height / 2} dy={4} fontSize={10} fontWeight={600} fill="#374151">{fmt(value)}</text>
+}
+
+function BarLabelTop({ x, y, width, value }: { x: number; y: number; width: number; value: number }) {
+  return <text x={x + width / 2} y={y - 6} textAnchor="middle" fontSize={10} fontWeight={600} fill="#374151">{fmt(value)}</text>
+}
 
 /* ── OVERVIEW ─────────────────────────────────────────── */
 function OverviewView({ data }: { data: DashboardData }) {
@@ -57,8 +70,8 @@ function OverviewView({ data }: { data: DashboardData }) {
   const winRate = kpis.totalDealsWon + kpis.totalDealsLost > 0
     ? (kpis.totalDealsWon / (kpis.totalDealsWon + kpis.totalDealsLost)) * 100 : 0
 
-  const topProducts = productMix.slice(0, 8)
-  const topChannels = channelMix.slice(0, 10)
+  const topProducts = productMix.filter(p => p.produto !== 'Sem produto')
+  const topChannels = channelMix
 
   return (
     <div className="space-y-5">
@@ -105,7 +118,7 @@ function OverviewView({ data }: { data: DashboardData }) {
       <div className="bg-white rounded-xl p-5 shadow-xs border border-gray-100">
         <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Meta vs Realizado por Closer</h3>
         <div className="space-y-3">
-          {metaChart.map((c, i) => (
+          {metaChart.map(c => (
             <div key={c.name}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-semibold text-gray-800">{c.name}</span>
@@ -125,31 +138,29 @@ function OverviewView({ data }: { data: DashboardData }) {
 
       {/* Produto + Canal side by side */}
       <div className="grid grid-cols-2 gap-4">
-        {/* Venda por Produto */}
         <div className="bg-white rounded-xl p-5 shadow-xs border border-gray-100">
           <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Receita por Produto</h3>
-          <ResponsiveContainer width="100%" height={topProducts.length * 36 + 20}>
-            <BarChart data={topProducts} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
-              <XAxis type="number" tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(v: unknown) => fmt(Number(v))} />
-              <YAxis dataKey="produto" type="category" tick={{ fontSize: 10, fill: '#6b7280' }} width={120} />
+          <ResponsiveContainer width="100%" height={topProducts.length * 32 + 20}>
+            <BarChart data={topProducts} layout="vertical" margin={{ top: 0, right: 60, left: 0, bottom: 0 }}>
+              <XAxis type="number" hide />
+              <YAxis dataKey="produto" type="category" tick={{ fontSize: 10, fill: '#374151' }} width={120} axisLine={false} tickLine={false} />
               <Tooltip formatter={(v: unknown) => fmtN(Number(v))} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-              <Bar dataKey="receita" name="Receita" radius={[0, 4, 4, 0]}>
-                {topProducts.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+              <Bar dataKey="receita" name="Receita" radius={[0, 4, 4, 0]} label={BarLabel as unknown as React.SVGProps<SVGTextElement>}>
+                {topProducts.map((_, i) => <Cell key={i} fill={blueShade(i, topProducts.length)} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Venda por Canal/Origem */}
         <div className="bg-white rounded-xl p-5 shadow-xs border border-gray-100">
           <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Receita por Canal de Origem</h3>
-          <ResponsiveContainer width="100%" height={topChannels.length * 36 + 20}>
-            <BarChart data={topChannels} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
-              <XAxis type="number" tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(v: unknown) => fmt(Number(v))} />
-              <YAxis dataKey="canal" type="category" tick={{ fontSize: 10, fill: '#6b7280' }} width={140} />
+          <ResponsiveContainer width="100%" height={topChannels.length * 32 + 20}>
+            <BarChart data={topChannels} layout="vertical" margin={{ top: 0, right: 60, left: 0, bottom: 0 }}>
+              <XAxis type="number" hide />
+              <YAxis dataKey="canal" type="category" tick={{ fontSize: 10, fill: '#374151' }} width={130} axisLine={false} tickLine={false} />
               <Tooltip formatter={(v: unknown) => fmtN(Number(v))} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-              <Bar dataKey="receita" name="Receita" radius={[0, 4, 4, 0]}>
-                {topChannels.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+              <Bar dataKey="receita" name="Receita" radius={[0, 4, 4, 0]} label={BarLabel as unknown as React.SVGProps<SVGTextElement>}>
+                {topChannels.map((_, i) => <Cell key={i} fill={blueShade(i, topChannels.length)} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -159,14 +170,14 @@ function OverviewView({ data }: { data: DashboardData }) {
       {/* Origem por SDR */}
       <div className="bg-white rounded-xl p-5 shadow-xs border border-gray-100">
         <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Receita por SDR de Origem</h3>
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={sdrOrigin} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={sdrOrigin} margin={{ top: 20, right: 20, left: 10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="sdr" tick={{ fontSize: 11, fill: '#6b7280' }} />
+            <XAxis dataKey="sdr" tick={{ fontSize: 10, fill: '#6b7280' }} />
             <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(v: unknown) => fmt(Number(v))} width={65} />
             <Tooltip formatter={(v: unknown) => fmtN(Number(v))} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-            <Bar dataKey="receita" name="Receita" radius={[4, 4, 0, 0]}>
-              {sdrOrigin.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+            <Bar dataKey="receita" name="Receita" radius={[4, 4, 0, 0]} label={BarLabelTop as unknown as React.SVGProps<SVGTextElement>}>
+              {sdrOrigin.map((_, i) => <Cell key={i} fill={blueShade(i, sdrOrigin.length)} />)}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -409,12 +420,11 @@ function PerdasView({ data }: { data: DashboardData }) {
         <div className="bg-white rounded-xl p-5 shadow-xs border border-gray-100">
           <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Receita Perdida por Motivo</h3>
           <ResponsiveContainer width="100%" height={320}>
-            <BarChart data={motivosPerda.slice(0, 8)} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis type="number" tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(v: unknown) => fmt(Number(v))} />
-              <YAxis dataKey="motivo" type="category" tick={{ fontSize: 10, fill: '#6b7280' }} width={140} />
+            <BarChart data={motivosPerda.slice(0, 8)} layout="vertical" margin={{ top: 0, right: 60, left: 0, bottom: 0 }}>
+              <XAxis type="number" hide />
+              <YAxis dataKey="motivo" type="category" tick={{ fontSize: 10, fill: '#374151' }} width={140} axisLine={false} tickLine={false} />
               <Tooltip formatter={(v: unknown) => fmtN(Number(v))} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-              <Bar dataKey="receitaPerdida" fill={C.bad} radius={[0, 4, 4, 0]} />
+              <Bar dataKey="receitaPerdida" fill={C.bad} radius={[0, 4, 4, 0]} label={BarLabel as unknown as React.SVGProps<SVGTextElement>} />
             </BarChart>
           </ResponsiveContainer>
         </div>
