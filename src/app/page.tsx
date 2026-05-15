@@ -52,11 +52,15 @@ function blueShade(i: number, total: number) {
   return shades[idx]
 }
 
-function BarLabel({ x, y, width, height, value }: { x: number; y: number; width: number; height: number; value: number }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function BarLabel(props: any) {
+  const { x, y, width, height, value } = props
   return <text x={x + width + 6} y={y + height / 2} dy={4} fontSize={10} fontWeight={600} fill="#374151">{fmt(value)}</text>
 }
 
-function BarLabelTop({ x, y, width, value }: { x: number; y: number; width: number; value: number }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function BarLabelTop(props: any) {
+  const { x, y, width, value } = props
   return <text x={x + width / 2} y={y - 6} textAnchor="middle" fontSize={10} fontWeight={600} fill="#374151">{fmt(value)}</text>
 }
 
@@ -145,7 +149,7 @@ function OverviewView({ data }: { data: DashboardData }) {
               <XAxis type="number" hide />
               <YAxis dataKey="produto" type="category" tick={{ fontSize: 10, fill: '#374151' }} width={120} axisLine={false} tickLine={false} />
               <Tooltip formatter={(v: unknown) => fmtN(Number(v))} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-              <Bar dataKey="receita" name="Receita" radius={[0, 4, 4, 0]} label={BarLabel as unknown as React.SVGProps<SVGTextElement>}>
+              <Bar dataKey="receita" name="Receita" radius={[0, 4, 4, 0]} label={BarLabel}>
                 {topProducts.map((_, i) => <Cell key={i} fill={blueShade(i, topProducts.length)} />)}
               </Bar>
             </BarChart>
@@ -159,7 +163,7 @@ function OverviewView({ data }: { data: DashboardData }) {
               <XAxis type="number" hide />
               <YAxis dataKey="canal" type="category" tick={{ fontSize: 10, fill: '#374151' }} width={130} axisLine={false} tickLine={false} />
               <Tooltip formatter={(v: unknown) => fmtN(Number(v))} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-              <Bar dataKey="receita" name="Receita" radius={[0, 4, 4, 0]} label={BarLabel as unknown as React.SVGProps<SVGTextElement>}>
+              <Bar dataKey="receita" name="Receita" radius={[0, 4, 4, 0]} label={BarLabel}>
                 {topChannels.map((_, i) => <Cell key={i} fill={blueShade(i, topChannels.length)} />)}
               </Bar>
             </BarChart>
@@ -176,7 +180,7 @@ function OverviewView({ data }: { data: DashboardData }) {
             <XAxis dataKey="sdr" tick={{ fontSize: 10, fill: '#6b7280' }} />
             <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(v: unknown) => fmt(Number(v))} width={65} />
             <Tooltip formatter={(v: unknown) => fmtN(Number(v))} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-            <Bar dataKey="receita" name="Receita" radius={[4, 4, 0, 0]} label={BarLabelTop as unknown as React.SVGProps<SVGTextElement>}>
+            <Bar dataKey="receita" name="Receita" radius={[4, 4, 0, 0]} label={BarLabelTop}>
               {sdrOrigin.map((_, i) => <Cell key={i} fill={blueShade(i, sdrOrigin.length)} />)}
             </Bar>
           </BarChart>
@@ -424,7 +428,7 @@ function PerdasView({ data }: { data: DashboardData }) {
               <XAxis type="number" hide />
               <YAxis dataKey="motivo" type="category" tick={{ fontSize: 10, fill: '#374151' }} width={140} axisLine={false} tickLine={false} />
               <Tooltip formatter={(v: unknown) => fmtN(Number(v))} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-              <Bar dataKey="receitaPerdida" fill={C.bad} radius={[0, 4, 4, 0]} label={BarLabel as unknown as React.SVGProps<SVGTextElement>} />
+              <Bar dataKey="receitaPerdida" fill={C.bad} radius={[0, 4, 4, 0]} label={BarLabel} />
             </BarChart>
           </ResponsiveContainer>
         </div>
