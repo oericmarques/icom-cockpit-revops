@@ -402,22 +402,25 @@ function PerdasView({ data }: { data: DashboardData }) {
 /* ── MAIN DASHBOARD ───────────────────────────────────── */
 
 export default function Dashboard() {
+  const now = new Date()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<View>('overview')
   const [closerFilter, setCloserFilter] = useState('all')
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
 
   const fetchData = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/dashboard?_t=${Date.now()}`)
+      const res = await fetch(`/api/dashboard?_t=${Date.now()}&month=${selectedMonth}&year=${selectedYear}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setData(await res.json())
     } catch (e) { setError(String(e)) }
     finally { setLoading(false) }
-  }, [])
+  }, [selectedMonth, selectedYear])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -533,7 +536,18 @@ export default function Dashboard() {
             <span className="text-[10px] text-gray-400">{data.period.daysElapsed}/{data.period.totalDays} dias ({pct(data.period.percentElapsed)})</span>
           </div>
           <div className="flex items-center gap-3">
-            {/* Closer filter */}
+            <select
+              value={`${selectedYear}-${selectedMonth}`}
+              onChange={e => { const [y, m] = e.target.value.split('-').map(Number); setSelectedYear(y); setSelectedMonth(m) }}
+              className="text-xs border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            >
+              {Array.from({ length: 12 }, (_, i) => {
+                const m = now.getMonth() - i
+                const d = new Date(now.getFullYear(), m, 1)
+                const label = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+                return <option key={i} value={`${d.getFullYear()}-${d.getMonth() + 1}`}>{label.charAt(0).toUpperCase() + label.slice(1)}</option>
+              })}
+            </select>
             <select
               value={closerFilter}
               onChange={e => setCloserFilter(e.target.value)}

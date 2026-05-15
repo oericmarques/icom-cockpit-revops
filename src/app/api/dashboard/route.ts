@@ -21,10 +21,12 @@ const SDR_IDS: Record<number, { name: string; nivel: number; meta: number }> = {
   25825087: { name: 'Bruno', nivel: 3, meta: 68 },
 }
 
+const PAYMENT_DATE_FIELD = 'c6eef8793beb3bcafb635eb40a717ab40694e961'
+
 const META_TOTAL = 1500000
 const META_PER_CLOSER = Math.round(META_TOTAL / Object.keys(CLOSER_IDS).length)
 
-let cachedData: { data: DashboardData; timestamp: number } | null = null
+let cachedData: { data: DashboardData; timestamp: number; key: string } | null = null
 const CACHE_TTL = 5 * 60 * 1000
 
 function parseDealValue(deal: Record<string, unknown>): number {
@@ -64,13 +66,14 @@ export async function GET(request: Request) {
     const url = new URL(request.url)
     const forceRefresh = url.searchParams.has('_t')
 
-    if (!forceRefresh && cachedData && Date.now() - cachedData.timestamp < CACHE_TTL) {
+    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+    const month = url.searchParams.has('month') ? Number(url.searchParams.get('month')) : now.getMonth() + 1
+    const year = url.searchParams.has('year') ? Number(url.searchParams.get('year')) : now.getFullYear()
+
+    const cacheKey = `${year}-${month}`
+    if (!forceRefresh && cachedData && cachedData.key === cacheKey && Date.now() - cachedData.timestamp < CACHE_TTL) {
       return NextResponse.json(cachedData.data)
     }
-
-    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
-    const month = now.getMonth() + 1
-    const year = now.getFullYear()
     const { totalDays, daysElapsed } = getMonthRange(year, month)
 
     const [, allWonDeals, allLostDeals] = await Promise.all([
@@ -79,7 +82,7 @@ export async function GET(request: Request) {
       getLostDeals(),
     ])
 
-    const wonDeals = filterDealsByMonth(allWonDeals, 'won_time', year, month)
+    const wonDeals = filterDealsByMonth(allWonDeals, PAYMENT_DATE_FIELD, year, month)
     const lostDeals = filterDealsByMonth(allLostDeals, 'lost_time', year, month)
 
     const closerMap = new Map<number, CloserData>()
@@ -106,12 +109,14 @@ export async function GET(request: Request) {
         closerRealizado += value
         closerWon++
 
+        const payDate = (deal[PAYMENT_DATE_FIELD] ?? deal.won_time ?? deal.close_time ?? '') as string
+
         closer.deals.push({
           id: deal.id as number,
           title: deal.title as string,
           valor: value,
           criadoEm: formatDateBR(deal.add_time as string),
-          pagoEm: formatDateBR((deal.won_time ?? deal.close_time ?? '') as string),
+          pagoEm: formatDateBR(payDate),
           leadTimeDays: daysBetween(deal.add_time as string, (deal.won_time ?? deal.close_time ?? deal.add_time) as string),
         })
       }
@@ -149,11 +154,11 @@ export async function GET(request: Request) {
 
     const dealsByDay = new Map<number, number>()
     for (const deal of wonDeals) {
-      const wonTime = (deal.won_time ?? deal.close_time) as string
-      if (!wonTime) continue
+      const payDate = (deal[PAYMENT_DATE_FIELD] ?? deal.won_time ?? deal.close_time) as string
+      if (!payDate) continue
       const owner = getDealOwnerInfo(deal)
       if (!closerMap.has(owner.id)) continue
-      const d = new Date(wonTime)
+      const d = new Date(payDate)
       dealsByDay.set(d.getDate(), (dealsByDay.get(d.getDate()) ?? 0) + parseDealValue(deal))
     }
 
@@ -218,7 +223,7 @@ export async function GET(request: Request) {
       lastUpdated: spTimestamp(),
     }
 
-    cachedData = { data: result, timestamp: Date.now() }
+    cachedData = { data: result, timestamp: Date.now(), key: cacheKey }
     return NextResponse.json(result)
   } catch (error) {
     console.error('Dashboard API error:', error)
