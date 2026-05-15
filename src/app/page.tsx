@@ -86,8 +86,8 @@ function OverviewView({ data }: { data: DashboardData }) {
           <LineChart data={pacingData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} interval={2} />
-            <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(v: number) => fmt(v)} width={70} />
-            <Tooltip formatter={(v: number, n: string) => [fmtN(v), n === 'acumulado' ? 'Realizado' : 'Meta']} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+            <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(v: unknown) => fmt(Number(v))} width={70} />
+            <Tooltip formatter={(v: unknown, n: unknown) => [fmtN(Number(v)), n === 'acumulado' ? 'Realizado' : 'Meta']} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
             <Line type="monotone" dataKey="metaLinear" stroke={C.bad} strokeDasharray="6 4" strokeWidth={1.5} dot={false} name="meta" />
             <Line type="monotone" dataKey="acumulado" stroke={C.navy500} strokeWidth={2.5} dot={false} connectNulls={false} name="acumulado" />
             <ReferenceLine x={`${String(period.daysElapsed).padStart(2, '0')}/${String(pacing[0]?.date.split('/')[1])}`} stroke={C.gold} strokeDasharray="3 3" label={{ value: 'Hoje', fill: C.gold, fontSize: 10 }} />
@@ -103,8 +103,8 @@ function OverviewView({ data }: { data: DashboardData }) {
             <BarChart data={metaChart} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6b7280' }} />
-              <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(v: number) => fmt(v)} width={65} />
-              <Tooltip formatter={(v: number) => fmtN(v)} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+              <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(v: unknown) => fmt(Number(v))} width={65} />
+              <Tooltip formatter={(v: unknown) => fmtN(Number(v))} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
               <Bar dataKey="meta" name="Meta" fill="#e5e7eb" radius={[4, 4, 0, 0]} />
               <Bar dataKey="realizado" name="Realizado" radius={[4, 4, 0, 0]}>
                 {metaChart.map((e, i) => <Cell key={i} fill={statusColor(e.pct)} />)}
@@ -120,7 +120,7 @@ function OverviewView({ data }: { data: DashboardData }) {
               <Pie data={closers.filter(c => c.realizado > 0)} dataKey="realizado" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={85} strokeWidth={2} stroke="#fff">
                 {closers.filter(c => c.realizado > 0).map((_, i) => <Cell key={i} fill={[C.navy500, C.navy600, C.gold, C.warn][i % 4]} />)}
               </Pie>
-              <Tooltip formatter={(v: number) => fmtN(v)} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+              <Tooltip formatter={(v: unknown) => fmtN(Number(v))} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -365,9 +365,9 @@ function PerdasView({ data }: { data: DashboardData }) {
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={motivosPerda.slice(0, 8)} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis type="number" tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(v: number) => fmt(v)} />
+              <XAxis type="number" tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(v: unknown) => fmt(Number(v))} />
               <YAxis dataKey="motivo" type="category" tick={{ fontSize: 10, fill: '#6b7280' }} width={140} />
-              <Tooltip formatter={(v: number) => fmtN(v)} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+              <Tooltip formatter={(v: unknown) => fmtN(Number(v))} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
               <Bar dataKey="receitaPerdida" fill={C.bad} radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -459,7 +459,7 @@ export default function Dashboard() {
         {/* Logo */}
         <div className="px-5 pt-6 pb-4 border-b border-white/10">
           <IcomLogo className="w-28 text-white" />
-          <p className="text-[10px] uppercase tracking-[3px] mt-2" style={{ color: C.gold }}>Cockpit Comercial</p>
+          <p className="text-[10px] uppercase tracking-[3px] mt-2" style={{ color: C.gold }}>Cockpit RevOps Comercial</p>
         </div>
 
         {/* Nav */}
