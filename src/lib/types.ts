@@ -21,6 +21,9 @@ export interface DashboardData {
   sdrs: SDRData[]
   pacing: PacingDay[]
   motivosPerda: LossReason[]
+  productMix: ProductMix[]
+  channelMix: ChannelMix[]
+  sdrOrigin: SDROrigin[]
   lastUpdated: string
 }
 
@@ -66,6 +69,26 @@ export interface LossReason {
   deals: number
   percent: number
   receitaPerdida: number
+}
+
+export interface ProductMix {
+  produto: string
+  deals: number
+  receita: number
+  percent: number
+}
+
+export interface ChannelMix {
+  canal: string
+  deals: number
+  receita: number
+  percent: number
+}
+
+export interface SDROrigin {
+  sdr: string
+  deals: number
+  receita: number
 }
 
 export interface PipedriveUser {

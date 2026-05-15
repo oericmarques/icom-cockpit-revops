@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, Fragment, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, ReferenceLine, Cell, PieChart, Pie,
+  LineChart, Line, ReferenceLine, Cell, PieChart, Pie, Legend,
 } from 'recharts'
 import {
   LayoutDashboard, Target, Headphones, FileText, XCircle,
@@ -45,15 +45,20 @@ const NAV: { id: View; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'perdas', label: 'Perdas', icon: XCircle },
 ]
 
+const CHART_COLORS = [C.navy500, C.gold, C.ok, C.warn, '#8b5cf6', '#ec4899', C.navy400, '#14b8a6', '#f97316', '#6366f1']
+
 /* ── OVERVIEW ─────────────────────────────────────────── */
 function OverviewView({ data }: { data: DashboardData }) {
-  const { kpis, closers, pacing, period } = data
+  const { kpis, closers, pacing, period, productMix, channelMix, sdrOrigin } = data
   const pacingData = pacing.map(p => ({ ...p, acumulado: p.acumulado >= 0 ? p.acumulado : undefined }))
-  const metaChart = closers.filter(c => c.ganhos > 0).map(c => ({
+  const metaChart = closers.map(c => ({
     name: c.name.split(' ')[0], meta: c.meta, realizado: c.realizado, pct: c.percent,
   }))
   const winRate = kpis.totalDealsWon + kpis.totalDealsLost > 0
     ? (kpis.totalDealsWon / (kpis.totalDealsWon + kpis.totalDealsLost)) * 100 : 0
+
+  const topProducts = productMix.slice(0, 8)
+  const topChannels = channelMix.slice(0, 10)
 
   return (
     <div className="space-y-5">
@@ -82,48 +87,89 @@ function OverviewView({ data }: { data: DashboardData }) {
       {/* Pacing */}
       <div className="bg-white rounded-xl p-5 shadow-xs border border-gray-100 animate-in" style={{ animationDelay: '250ms' }}>
         <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Pacing Mensal</h3>
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={280}>
           <LineChart data={pacingData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} interval={2} />
             <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(v: unknown) => fmt(Number(v))} width={70} />
             <Tooltip formatter={(v: unknown, n: unknown) => [fmtN(Number(v)), n === 'acumulado' ? 'Realizado' : 'Meta']} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-            <Line type="monotone" dataKey="metaLinear" stroke={C.bad} strokeDasharray="6 4" strokeWidth={1.5} dot={false} name="meta" />
-            <Line type="monotone" dataKey="acumulado" stroke={C.navy500} strokeWidth={2.5} dot={false} connectNulls={false} name="acumulado" />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Line type="monotone" dataKey="metaLinear" stroke={C.bad} strokeDasharray="6 4" strokeWidth={1.5} dot={false} name="Meta Linear" />
+            <Line type="monotone" dataKey="acumulado" stroke={C.navy500} strokeWidth={2.5} dot={false} connectNulls={false} name="Realizado" />
             <ReferenceLine x={`${String(period.daysElapsed).padStart(2, '0')}/${String(pacing[0]?.date.split('/')[1])}`} stroke={C.gold} strokeDasharray="3 3" label={{ value: 'Hoje', fill: C.gold, fontSize: 10 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Charts row */}
+      {/* Meta vs Realizado por Closer */}
+      <div className="bg-white rounded-xl p-5 shadow-xs border border-gray-100">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Meta vs Realizado por Closer</h3>
+        <div className="space-y-3">
+          {metaChart.map((c, i) => (
+            <div key={c.name}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-semibold text-gray-800">{c.name}</span>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="text-gray-400">{fmt(c.realizado)} / {fmt(c.meta)}</span>
+                  <span className="font-bold" style={{ color: statusColor(c.pct) }}>{pct(c.pct)}</span>
+                </div>
+              </div>
+              <div className="relative h-5 bg-gray-100 rounded-full overflow-hidden">
+                <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-700" style={{ width: `${Math.min(100, c.pct)}%`, background: statusColor(c.pct) }} />
+                <div className="absolute top-0 bottom-0 w-0.5 bg-gray-400/60" style={{ left: '100%' }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Produto + Canal side by side */}
       <div className="grid grid-cols-2 gap-4">
+        {/* Venda por Produto */}
         <div className="bg-white rounded-xl p-5 shadow-xs border border-gray-100">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Meta vs Realizado</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={metaChart} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6b7280' }} />
-              <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(v: unknown) => fmt(Number(v))} width={65} />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Receita por Produto</h3>
+          <ResponsiveContainer width="100%" height={topProducts.length * 36 + 20}>
+            <BarChart data={topProducts} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+              <XAxis type="number" tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(v: unknown) => fmt(Number(v))} />
+              <YAxis dataKey="produto" type="category" tick={{ fontSize: 10, fill: '#6b7280' }} width={120} />
               <Tooltip formatter={(v: unknown) => fmtN(Number(v))} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-              <Bar dataKey="meta" name="Meta" fill="#e5e7eb" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="realizado" name="Realizado" radius={[4, 4, 0, 0]}>
-                {metaChart.map((e, i) => <Cell key={i} fill={statusColor(e.pct)} />)}
+              <Bar dataKey="receita" name="Receita" radius={[0, 4, 4, 0]}>
+                {topProducts.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
 
+        {/* Venda por Canal/Origem */}
         <div className="bg-white rounded-xl p-5 shadow-xs border border-gray-100">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Distribuicao de Resultado</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={closers.filter(c => c.realizado > 0)} dataKey="realizado" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={85} strokeWidth={2} stroke="#fff">
-                {closers.filter(c => c.realizado > 0).map((_, i) => <Cell key={i} fill={[C.navy500, C.navy600, C.gold, C.warn][i % 4]} />)}
-              </Pie>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Receita por Canal de Origem</h3>
+          <ResponsiveContainer width="100%" height={topChannels.length * 36 + 20}>
+            <BarChart data={topChannels} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+              <XAxis type="number" tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(v: unknown) => fmt(Number(v))} />
+              <YAxis dataKey="canal" type="category" tick={{ fontSize: 10, fill: '#6b7280' }} width={140} />
               <Tooltip formatter={(v: unknown) => fmtN(Number(v))} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-            </PieChart>
+              <Bar dataKey="receita" name="Receita" radius={[0, 4, 4, 0]}>
+                {topChannels.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
         </div>
+      </div>
+
+      {/* Origem por SDR */}
+      <div className="bg-white rounded-xl p-5 shadow-xs border border-gray-100">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Receita por SDR de Origem</h3>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={sdrOrigin} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="sdr" tick={{ fontSize: 11, fill: '#6b7280' }} />
+            <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} tickFormatter={(v: unknown) => fmt(Number(v))} width={65} />
+            <Tooltip formatter={(v: unknown) => fmtN(Number(v))} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+            <Bar dataKey="receita" name="Receita" radius={[4, 4, 0, 0]}>
+              {sdrOrigin.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   )

@@ -6,7 +6,7 @@ import {
   filterDealsByMonth,
   getMonthRange,
 } from '@/lib/pipedrive'
-import type { DashboardData, CloserData, DealDetail, PacingDay, LossReason, SDRData } from '@/lib/types'
+import type { DashboardData, CloserData, DealDetail, PacingDay, LossReason, SDRData, ProductMix, ChannelMix, SDROrigin } from '@/lib/types'
 
 const CLOSER_IDS: Record<number, string> = {
   23147841: 'Pamela Godoy',
@@ -22,6 +22,22 @@ const SDR_IDS: Record<number, { name: string; nivel: number; meta: number }> = {
 }
 
 const PAYMENT_DATE_FIELD = 'c6eef8793beb3bcafb635eb40a717ab40694e961'
+const PRODUCT_FIELD = '46a4f1de10521e00da7ab44592dc00cc019ae422'
+const SDR_FIELD = '33ff3a6340bb802cbdb7998f70b135e290bd6815'
+
+const CHANNEL_NAMES: Record<string, string> = {
+  '3': 'Web Forms', '4': 'Teste IA', '7': 'Campaigns', '8': 'Campanha de Marketing',
+  '54': 'Indicacao Select', '55': 'Indicacao SO', '59': 'Mkt Pro Renovacao',
+  '60': 'Insta Lu', '61': 'Insta Fabio', '62': 'Clientes Agencia',
+  '63': 'Indicacao Agencia', '64': 'Whatsapp Direto', '65': 'SOAPP',
+  '66': 'Indicacao ICOMTV', '67': 'Indicacao Infinity',
+  '74': 'Base - Double SO + MKT PRO', '75': 'Base - Select',
+  '76': 'Base - MKT PRO 1.0', '77': 'Base - ICOMTV', '78': 'Base - MKT PRO 2.0',
+  '86': 'Bonus CRC PRO', '100': 'MKT 2024', '101': 'ORAL UNIC',
+  '104': 'Formulario IG', '121': 'Live Clinicorp', '122': 'Leads ICOMMKTPRES',
+  '125': 'Reunioes Closer', '140': 'Indicacao Interna', '177': 'Live IA Video',
+  '184': 'Base Combo', '189': 'Celular Agencia', '192': 'Vendedor Externo', '198': 'Comercial',
+}
 
 const META_TOTAL = 1500000
 const META_PER_CLOSER = Math.round(META_TOTAL / Object.keys(CLOSER_IDS).length)
@@ -195,6 +211,46 @@ export async function GET(request: Request) {
       .sort((a, b) => b.deals - a.deals)
       .slice(0, 15)
 
+    const productMap = new Map<string, { deals: number; receita: number }>()
+    const channelMap = new Map<string, { deals: number; receita: number }>()
+    const sdrOriginMap = new Map<string, { deals: number; receita: number }>()
+
+    for (const deal of wonDeals) {
+      const owner = getDealOwnerInfo(deal)
+      if (!closerMap.has(owner.id)) continue
+      const value = parseDealValue(deal)
+
+      const prod = ((deal[PRODUCT_FIELD] as string) || 'Sem produto').trim()
+      const pNorm = prod === '0' || prod === '' ? 'Sem produto' : prod
+      const pe = productMap.get(pNorm) ?? { deals: 0, receita: 0 }
+      pe.deals++; pe.receita += value
+      productMap.set(pNorm, pe)
+
+      const ch = String(deal.channel ?? '')
+      const chName = CHANNEL_NAMES[ch] || (ch ? `Canal ${ch}` : 'Sem canal')
+      const ce = channelMap.get(chName) ?? { deals: 0, receita: 0 }
+      ce.deals++; ce.receita += value
+      channelMap.set(chName, ce)
+
+      const sdrObj = deal[SDR_FIELD] as { name?: string } | null
+      const sdrName = sdrObj?.name || 'Sem SDR'
+      const se = sdrOriginMap.get(sdrName) ?? { deals: 0, receita: 0 }
+      se.deals++; se.receita += value
+      sdrOriginMap.set(sdrName, se)
+    }
+
+    const productMix: ProductMix[] = Array.from(productMap.entries())
+      .map(([produto, d]) => ({ produto, deals: d.deals, receita: d.receita, percent: closerRealizado > 0 ? (d.receita / closerRealizado) * 100 : 0 }))
+      .sort((a, b) => b.receita - a.receita)
+
+    const channelMix: ChannelMix[] = Array.from(channelMap.entries())
+      .map(([canal, d]) => ({ canal, deals: d.deals, receita: d.receita, percent: closerRealizado > 0 ? (d.receita / closerRealizado) * 100 : 0 }))
+      .sort((a, b) => b.receita - a.receita)
+
+    const sdrOrigin: SDROrigin[] = Array.from(sdrOriginMap.entries())
+      .map(([sdr, d]) => ({ sdr, deals: d.deals, receita: d.receita }))
+      .sort((a, b) => b.receita - a.receita)
+
     const monthNames = ['Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 
     const result: DashboardData = {
@@ -220,6 +276,9 @@ export async function GET(request: Request) {
       sdrs,
       pacing,
       motivosPerda,
+      productMix,
+      channelMix,
+      sdrOrigin,
       lastUpdated: spTimestamp(),
     }
 
